@@ -20,18 +20,18 @@ LOGGER = get_logger(__name__)
 
 def run():
     st.set_page_config(
-        page_title="Hello",
+        page_title="Hello, följer detta med?",
         page_icon="👋",
     )
 
-    st.write("# Welcome to Streamlit! 👋")
+    st.write("# Welcome to Streamlit Ylva!👋")
 
     st.sidebar.success("Select a demo above.")
 
     st.markdown(
         """
         Streamlit is an open-source app framework built specifically for
-        Machine Learning and Data Science projects.
+        Machine Learning and Data Science projects, helt perfekt för dig!
         **👈 Select a demo from the sidebar** to see some examples
         of what Streamlit can do!
         ### Want to learn more?
