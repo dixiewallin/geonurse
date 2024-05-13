@@ -1,0 +1,20 @@
+#Skapar excel med ny kolumn som visar om annonsen är på svenska/engelska, används för att skapa ny fil med endast svenska
+import pandas as pd
+from langdetect import detect
+
+# Läs in datasetet från Excel-filen
+df = pd.read_csv('2023.csv')
+
+# Funktion för att identifiera språk
+def identifiera_sprak(text):
+    try:
+        sprak = detect(str(text))
+        return sprak
+    except:
+        return None
+
+# Skapa en ny kolumn med språket för varje annons
+df['sprak'] = df['Description'].apply(identifiera_sprak)
+
+# Spara DataFrame till samma Excel-fil med den nya kolumnen
+df.to_excel('2023_med_sprak.xlsx', index=False)
