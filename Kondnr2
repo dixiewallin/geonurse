@@ -1,0 +1,47 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+
+# Läs in din CSV-fil
+data = pd.read_csv('2023.csv', delimiter=';')
+
+
+# Hantera NaN-värden
+data['Description'] = data['Description'].fillna('') # Ersätt NaN i beskrivningar med tom sträng
+data['Region'] = data['Region'].fillna('Okänd') # Ersätt NaN i regioner med 'Okänd'
+
+
+# Välj kolumner för X och y
+X = data['Description'] # Textdata för beskrivningar
+y = data['Region'] # Etiketter för regioner
+
+
+# Dela upp data i tränings- och testset
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+
+from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+
+
+# Skapa en pipeline för att omvandla data och träna en klassificerare
+model = Pipeline([
+('tfidf', TfidfVectorizer()),
+('clf', LogisticRegression(solver='liblinear')) # Använd 'liblinear' för bättre hantering av små dataset
+])
+
+
+# Träna modellen på ditt träningsdata
+model.fit(X_train, y_train)
+
+
+from sklearn.metrics import classification_report
+
+
+# Förutsäg etiketter för testdata
+y_pred = model.predict(X_test)
+
+
+# Skriv ut en klassificeringsrapport för att se modellens prestanda
+print(classification_report(y_test, y_pred))
