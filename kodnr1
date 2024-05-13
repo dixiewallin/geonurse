@@ -1,0 +1,34 @@
+# Importera nödvändiga bibliotek
+import streamlit as st
+import pandas as pd
+
+# Läs in CSV-filen (använd absolut sökväg om nödvändigt)
+df = pd.read_csv('/Users/monasaffari/Desktop/Hello/2023.csv', sep=';')
+df.columns = df.columns.str.strip()  # Trimma kolumnnamn
+
+# Ställ en fråga om vilken typ av jobb användaren är intresserad av
+job_type = st.selectbox("Vilken typ av jobb är du intresserad av?", df['Type'].unique())
+
+# Fråga efter region där användaren vill arbeta
+region = st.selectbox("Vilken region vill du arbeta i?", df['Region'].unique())
+
+# Filtrera jobbannonserna baserat på användarens val
+filtered_df = df[
+    (df['Type'] == job_type) &
+    (df['Region'] == region)
+]
+
+# Visa de 5 bäst matchande jobben
+st.subheader("Topp 5 matchande jobb:")
+for _, row in filtered_df.head(5).iterrows():
+    st.write(f"**{row['Headline']}**")
+    st.write(f"- Ansökningstid: {row['Application_deadline']}")
+    st.write(f"- Typ: {row['Type']}")
+    st.write(f"- Region: {row['Region']}")
+    st.write(f"- Arbetsgivare: {row['Employer.name']} på {row['Employer.workplace']}")
+    st.write(f"- Lön: {row['Salary']}")
+    st.write(f"- Varaktighet: {row['Duration']}")
+    st.write(f"- Arbetstid: {row['Working_hours']}")
+    st.write(f"- Publiceringsdatum: {row['Publication_date']}")
+    st.write("---")
+    
