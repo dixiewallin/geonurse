@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoNurse</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: white;
+            font-family: 'Roboto Condensed', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .header {
+            background-color: pink;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            width: 100%;
+        }
+        .chat-container {
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            width: 300px;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chat-box {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+        }
+        .user-input {
+            display: flex;
+        }
+        .user-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 0;
+        }
+        .user-input button {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-left: none;
+            background-color: pink;
+            color: white;
+            cursor: pointer;
+            border-bottom-right-radius: 10px;
+        }
+        .user-input button:hover {
+            background-color: #ff69b4;
+        }
+        .message {
+            margin: 5px 0;
+        }
+        .message.user {
+            text-align: right;
+        }
+        .message.bot {
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>GeoNurse</h1>
+    </div>
+    <div class="chat-container">
+        <div class="chat-box" id="chat-box">
+            <!-- Chat messages will appear here -->
+        </div>
+        <div class="user-input">
+            <input type="text" id="user-input" placeholder="Skriv ett meddelande...">
+            <button onclick="sendMessage()">Skicka</button>
+        </div>
+    </div>
+
+    <script>
+        function sendMessage() {
+            const userInput = document.getElementById('user-input');
+            const chatBox = document.getElementById('chat-box');
+
+            if (userInput.value.trim() !== "") {
+                // Append user message
+                const userMessage = document.createElement('div');
+                userMessage.className = 'message user';
+                userMessage.textContent = userInput.value;
+                chatBox.appendChild(userMessage);
+
+                // Clear input
+                const userMessageText = userInput.value;
+                userInput.value = '';
+
+                // Append bot response
+                setTimeout(() => {
+                    const botMessage = document.createElement('div');
+                    botMessage.className = 'message bot';
+                    botMessage.textContent = getBotResponse(userMessageText);
+                    chatBox.appendChild(botMessage);
+
+                    // Scroll to the bottom
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }, 1000);
+            }
+        }
+
+        function getBotResponse(userMessage) {
+            // Simple bot responses
+            const responses = {
+                "hej": "Hej! Hur kan jag hjälpa dig idag?",
+                "jobb": "Det finns många jobbmöjligheter för sjuksköterskor. Vad är du intresserad av?",
+                "tack": "Varsågod! Finns det något mer jag kan hjälpa dig med?",
+                "hejdå": "Hejdå! Ha en bra dag!"
+            };
+
+            return responses[userMessage.toLowerCase()] || "Förlåt, jag förstår inte. Kan du omformulera?";
+        }
+    </script>
+</body>
+</html>
