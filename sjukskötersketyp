@@ -1,0 +1,44 @@
+import pandas as pd
+import re
+from collections import Counter
+
+# Läs in data från CSV-filen med rätt separator och specifiera kolumnnamn
+data = pd.read_csv("2023.csv", sep=";", names=[
+    "Id", "Headline", "Application_deadline", "Amount", "Description", 
+    "Type", "Salary", "Duration", "Working_hours", "Region", "Municipality", 
+    "Employer_name", "Employer_workplace", "Publication_date"
+])
+
+# Funktion för att extrahera sjukskötersketyp från Headline
+def extract_nurse_type(headline):
+    # Använd regular expressions för att extrahera potentiella sjukskötersketyper
+    match = re.search(r'\b(sjuksköterska|barnmorska|anestesisjuksköterska|operationssjuksköterska|röntgensjuksköterska|intensivvårdssjuksköterska|distriktssköterska|psykiatrisjuksköterska)\b', headline.lower())
+    return match.group(0) if match else None
+
+# Extrahera sjukskötersketyp
+data['Nurse_type'] = data['Headline'].apply(extract_nurse_type)
+
+# Ta bort NaN-värden
+data = data.dropna(subset=['Nurse_type'])
+
+# Räkna förekomsten av varje sjukskötersketyp
+nurse_type_counts = Counter(data['Nurse_type'])
+
+# Filtrera ut sjukskötersketyper som förekommer mer än fem gånger
+common_nurse_types = [nurse for nurse, count in nurse_type_counts.items() if count > 5]
+
+# Presentera listan på vanliga typer av sjuksköterskor för användaren
+print("Här är de vanligaste typerna av sjuksköterskor som du kan välja mellan:")
+for i, nurse_type in enumerate(common_nurse_types):
+    print(f"{i}: {nurse_type.capitalize()}")
+
+# Användarens val av kategori
+selected_category = int(input("Ange numret för den önskade kategorin: "))
+
+# Filtrera data för den valda kategorin
+selected_nurse_type = common_nurse_types[selected_category]
+filtered_data = data[data['Nurse_type'] == selected_nurse_type]
+
+# Visa resultaten för den valda kategorin
+print("Resultat för kategorin:", selected_nurse_type.capitalize())
+print(filtered_data)
