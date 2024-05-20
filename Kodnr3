@@ -1,0 +1,252 @@
+import streamlit as st
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report
+import pandas as pd
+import re
+from openai import OpenAI
+import config
+import os
+import pickle
+from scipy.sparse import load_npz
+
+# Läs in förberedd data och variabler
+X_train_tfidf = load_npz('X_train_tfidf.npz')
+X_test_tfidf = load_npz('X_test_tfidf.npz')
+y_train = np.load('y_train.npy', allow_pickle=True)
+y_test = np.load('y_test.npy', allow_pickle=True)
+
+common_nurse_types = np.load('common_nurse_types.npy', allow_pickle=True)
+working_hours_types = np.load('working_hours_types.npy', allow_pickle=True)
+employment_types = np.load('employment_types.npy', allow_pickle=True)
+
+# Läs in TF-IDF vektorisering
+with open('tfidf_vectorizer.pkl', 'rb') as f:
+    tfidf_vectorizer = pickle.load(f)
+
+# Läs in data för användning i Streamlit
+csv_file_path = os.path.join(os.path.dirname(__file__), "2023.csv")
+data = pd.read_csv(csv_file_path, sep=";", names=[
+    "Id", "Headline", "Application_deadline", "Amount", "Description", 
+    "Type", "Salary", "Duration", "Working_hours", "Region", "Municipality", 
+    "Employer_name", "Employer_workplace", "Publication_date"
+])
+
+# Standardisera städer till små bokstäver
+data['Municipality'] = data['Municipality'].str.lower().str.strip()
+
+# Träna en Logistic Regression klassificerare
+classifier = LogisticRegression(max_iter=2000, solver='liblinear')
+classifier.fit(X_train_tfidf, y_train)
+
+# Förutsäg på testdata
+y_pred = classifier.predict(X_test_tfidf)
+
+# Utvärdera modellen
+accuracy = accuracy_score(y_test, y_pred)
+report = classification_report(y_test, y_pred)
+
+st.write(f"Noggrannhet: {accuracy}")
+st.write(f"Klassificeringsrapport:\n{report}")
+
+# Initialisera session state för messages
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+
+# Funktion för att hantera användarens val av stad
+def get_municipality_choice(user_input):
+    municipalities = data['Municipality'].unique()
+    if user_input.lower().strip() in municipalities:
+        return user_input.lower().strip()
+    else:
+        return None
+
+# Funktion för att hantera användarens val av sjukskötersketyp
+def get_nurse_type_choice(user_input):
+    if user_input.lower().strip() in common_nurse_types:
+        return user_input.lower().strip()
+    else:
+        return None
+
+# Funktion för att hantera användarens val av arbetstider
+def get_working_hours_choice(user_input):
+    if user_input.lower().strip() in working_hours_types:
+        return user_input.lower().strip()
+    else:
+        return None
+
+# Funktion för att hantera användarens val av anställningstyp
+def get_employment_type_choice(user_input):
+    if user_input.lower().strip() in employment_types:
+        return user_input.lower().strip()
+    else:
+        return None
+
+st.title("Nurse Bot")
+
+client = OpenAI(api_key=config.OPENAI_API_KEY)
+
+if "openai_model" not in st.session_state:
+    st.session_state["openai_model"] = "gpt-3.5-turbo"
+
+# Visa ett välkomstmeddelande
+if not st.session_state.messages:
+    welcome_message = "Välkommen till Nurse Bot! Ange vilken stad du vill jobba i."
+    st.session_state.messages.append({"role": "assistant", "content": welcome_message})
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+if prompt := st.chat_input("Skriv din fråga här..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    if "selected_city" not in st.session_state:
+        selected_city = get_municipality_choice(prompt)
+        if selected_city:
+            st.session_state.selected_city = selected_city
+            response = f"Du har valt {selected_city.capitalize()}.\nVilken typ av sjuksköterska är du intresserad av? Här är alternativen:\n"
+            for nurse_type in common_nurse_types:
+                response += f"- {nurse_type.capitalize()}\n"
+        else:
+            response = "Staden finns inte i våran lista! Försök igen."
+    elif "selected_nurse_type" not in st.session_state:
+        selected_nurse_type = get_nurse_type_choice(prompt)
+        if selected_nurse_type:
+            st.session_state.selected_nurse_type = selected_nurse_type
+            response = f"Du har valt {selected_nurse_type.capitalize()}.\nVill du jobba heltid eller deltid?\nAlternativen är:\n"
+            for working_hours in working_hours_types:
+                response += f"- {working_hours.capitalize()}\n"
+        else:
+            response = "Denna typ av sjuksköterska finns inte i våran lista! Försök igen."
+    elif "selected_working_hours" not in st.session_state:
+        selected_working_hours = get_working_hours_choice(prompt)
+        if selected_working_hours:
+            st.session_state.selected_working_hours = selected_working_hours
+            response = f"Du har valt att jobba {selected_working_hours.capitalize()}.\nVilken anställningstyp är du intresserad av? Här är alternativen:\n"
+            for employment_type in employment_types:
+                response += f"- {employment_type.capitalize()}\n"
+        else:
+            response = "Denna typ av arbetstid finns inte i våran lista! Försök igen."
+    elif "selected_employment_type" not in st.session_state:
+        selected_employment_type = get_employment_type_choice(prompt)
+        if selected_employment_type:
+            st.session_state.selected_employment_type = selected_employment_type
+            response = f"Du har valt anställningstypen {selected_employment_type.capitalize()}.\nAnge nyckelord för att hitta de bästa jobben som matchar din beskrivning:\n"
+        else:
+            response = "Denna typ av anställning finns inte i våran lista! Försök igen."
+    else:
+        keywords = prompt
+        user_tfidf = tfidf_vectorizer.transform([keywords])
+        
+        # Använd klassificeraren för att förutsäga relevans
+        relevance_predictions = classifier.predict(user_tfidf)
+        
+        # Välj de mest relevanta jobben baserat på förutsägelser
+        relevant_jobs = data[data.index.isin(relevance_predictions.nonzero()[0])]
+
+        if not relevant_jobs.empty:
+            response = f"De bästa matchande jobben för '{keywords}' i {st.session_state.selected_city.capitalize()} som {st.session_state.selected_nurse_type.capitalize()} på {st.session_state.selected_working_hours.capitalize()} basis med anställningstyp {st.session_state.selected_employment_type.capitalize()} är:\n\n"
+            for index, row in relevant_jobs.iterrows():
+                job_info = f"- **Id:** {row['Id']} **Titel:** {row['Headline']} **Beskrivning:** {row['Description'][:100]}...\n"
+                response += job_info
+        else:
+            response = f"Inga jobb matchade nyckelorden '{keywords}' i {st.session_state.selected_city.capitalize()} som {st.session_state.selected_nurse_type.capitalize()} på {st.session_state.selected_working_hours.capitalize()} basis med anställningstyp {st.session_state.selected_employment_type.capitalize()}."
+    
+    with st.chat_message("assistant"):
+        st.markdown(response)
+
+    st.session_state.messages.append({"role": "assistant", "content": response})
+
+
+# data_preparation.py
+
+import pandas as pd
+import numpy as np
+import re
+import os
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from collections import Counter
+import pickle
+from scipy.sparse import save_npz
+
+# Svenska stopord
+swedish_stopwords = [
+    'och', 'det', 'att', 'i', 'en', 'jag', 'hon', 'som', 'han', 'på', 'den', 
+    'med', 'var', 'sig', 'för', 'så', 'till', 'är', 'men', 'ett', 'om', 
+    'hade', 'de', 'av', 'icke', 'mig', 'du', 'henne', 'då', 'sin', 'nu', 
+    'har', 'inte', 'hans', 'honom', 'skulle', 'hennes', 'där', 'min', 'man', 
+    'ej', 'vid', 'kunde', 'något', 'från', 'ut', 'när', 'efter', 'upp', 
+    'vi', 'dem', 'vara', 'vad', 'över', 'än', 'dig', 'kan', 'sina', 'här', 
+    'ha', 'mot', 'alla', 'under', 'någon', 'eller', 'allt', 'mycket', 'sedan', 
+    'ju', 'denna', 'själv', 'detta', 'åt', 'utan', 'varit', 'hur', 'ingen', 
+    'mitt', 'ni', 'bli', 'blev', 'oss', 'din', 'dessa', 'några', 'deras', 
+    'blir', 'mina', 'samma', 'vilken', 'er', 'sådan', 'vår', 'blivit', 'dess', 
+    'inom', 'mellan', 'sådant', 'varför', 'varje', 'vilka', 'ditt', 'vem', 
+    'vilket', 'sitta', 'sådana', 'vart', 'dina', 'vars', 'vårt', 'våra'
+]
+
+# Läs in data
+csv_file_path = os.path.join(os.path.dirname(__file__), "2023.csv")
+data = pd.read_csv(csv_file_path, sep=";", names=[
+    "Id", "Headline", "Application_deadline", "Amount", "Description", 
+    "Type", "Salary", "Duration", "Working_hours", "Region", "Municipality", 
+    "Employer_name", "Employer_workplace", "Publication_date"
+])
+
+# Extrahera sjukskötersketyp från rubrik
+def extract_nurse_type(headline):
+    match = re.search(r'\b(sjuksköterska|barnmorska|anestesisjuksköterska|operationssjuksköterska|röntgensjuksköterska|intensivvårdssjuksköterska|distriktssköterska|psykiatrisjuksköterska)\b', headline.lower())
+    return match.group(0) if match else None
+
+data['Nurse_type'] = data['Headline'].apply(extract_nurse_type)
+data = data.dropna(subset=['Nurse_type'])
+
+# Ta bort NaN-värden och standardisera kolumner
+data['Municipality'] = data['Municipality'].str.lower().str.strip()  # Standardisera städer till små bokstäver
+data['Working_hours'] = data['Working_hours'].astype(str).str.lower().str.strip()
+data['Type'] = data['Type'].astype(str).str.lower().str.strip()
+
+# Definiera vanliga sjukskötersketyper
+nurse_type_counts = Counter(data['Nurse_type'])
+common_nurse_types = [nurse for nurse, count in nurse_type_counts.items() if count > 5]
+
+# Definiera arbetstidstyper
+working_hours_types = data['Working_hours'].dropna().unique()
+working_hours_types = [wh for wh in working_hours_types if wh not in ['nan', 'working_hours']]
+
+# Definiera anställningstyper
+employment_types = data['Type'].dropna().unique()
+employment_types = [et for et in employment_types if et not in ['nan', 'type']]
+
+# Lägg till en binär etikett för övervakad inlärning (1 för relevant, 0 för inte relevant)
+data['Label'] = np.random.randint(0, 2, data.shape[0])
+
+# Dela upp data i tränings- och testuppsättningar
+X_train, X_test, y_train, y_test = train_test_split(data['Description'], data['Label'], test_size=0.2, random_state=42)
+
+# TF-IDF Vektorisering med svenska stopord
+tfidf_vectorizer = TfidfVectorizer(stop_words=swedish_stopwords, max_df= 0.5, min_df = 0.01)
+
+X_train_tfidf = tfidf_vectorizer.fit_transform(X_train)
+X_test_tfidf = tfidf_vectorizer.transform(X_test)
+
+# Spara tränings- och testdata
+save_npz('X_train_tfidf.npz', X_train_tfidf)
+save_npz('X_test_tfidf.npz', X_test_tfidf)
+np.save('y_train.npy', y_train)
+np.save('y_test.npy', y_test)
+
+# Spara variabler för senare användning
+np.save('common_nurse_types.npy', common_nurse_types)
+np.save('working_hours_types.npy', working_hours_types)
+np.save('employment_types.npy', employment_types)
+
+# Spara TF-IDF vektorisering
+with open('tfidf_vectorizer.pkl', 'wb') as f:
+    pickle.dump(tfidf_vectorizer, f)
+
+print("Data preparation completed successfully.")
