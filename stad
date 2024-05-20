@@ -1,0 +1,34 @@
+import pandas as pd
+
+# Läs in data från CSV-filen med rätt separator och specifiera kolumnnamn
+data = pd.read_csv("2023.csv", sep=";", names=[
+    "Id", "Headline", "Application_deadline", "Amount", "Description", 
+    "Type", "Salary", "Duration", "Working_hours", "Region", "Municipality", 
+    "Employer_name", "Employer_workplace", "Publication_date"
+])
+
+# Ta bort rader med NaN-värden i 'Municipality'-kolumnen
+data = data.dropna(subset=['Municipality'])
+
+# Konvertera alla värden i 'Municipality'-kolumnen till små bokstäver för enhetlighet
+data['Municipality'] = data['Municipality'].str.lower()
+
+# Funktion för att hantera användarens val av stad
+def get_municipality_choice():
+    municipalities = data['Municipality'].unique()
+    user_input = input("Ange vilken stad du vill jobba i: ").lower()
+    if user_input in municipalities:
+        return user_input
+    else:
+        print("Staden finns inte i listan. Försök igen.")
+        return get_municipality_choice()
+
+# Användarens val av stad
+selected_city = get_municipality_choice()
+
+# Filtrera data för den valda staden
+city_filtered_data = data[data['Municipality'] == selected_city]
+
+# Visa resultaten för den valda staden
+print(f"Resultat för jobb i {selected_city.capitalize()}:")
+print(city_filtered_data)
