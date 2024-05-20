@@ -1,0 +1,13 @@
+import nltk
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+
+sentence = "Operationssjuksköterska"
+
+# Tokenisera meningen
+tokens = nltk.word_tokenize(sentence)
+print(tokens)  # Skriv ut tokenlistan
+
+# POS-tagga tokenlistan
+tagged = nltk.pos_tag(tokens)
+print(tagged)  # Skriv ut POS-taggarna
