@@ -7,7 +7,7 @@ import config
 import os
 import joblib
 
-st.title("Nurse Bot")
+st.title("Nurse Bot 👩‍⚕️")
 
 # Ange den fullständiga sökvägen till CSV-filen
 csv_file_path = os.path.join(os.path.dirname(__file__), "2023.csv")
@@ -72,14 +72,17 @@ if "messages" not in st.session_state:
     st.session_state["messages"] = []
 
 if not st.session_state.messages:
-    welcome_message = "Välkommen till Nurse Bot! Ange vilken stad du vill jobba i."
-    st.session_state.messages.append({"role": "assistant", "content": welcome_message})
+    initial_welcome = "Välkommen till Nurse Bot! Vi hjälper dig att hitta ett jobb som passar dig som sjuksköterska. Svara på frågorna nedan för att börja!"
+    st.session_state.messages.append({"role": "assistant", "content": initial_welcome})
+
+    first_question = "Vänligen ange vilken stad du vill jobba i:"
+    st.session_state.messages.append({"role": "assistant", "content": first_question})
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if prompt := st.chat_input("Skriv din fråga här..."):
+if prompt := st.chat_input("Skriv ditt svar här..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
